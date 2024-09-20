@@ -17,9 +17,10 @@ func NewCategory(db *sql.DB) *Category {
 	return &Category{db: db}
 }
 
-func (c *Category) Create(name, description string) (Category, error) {
+func (c *Category) Create(name string, description string) (Category, error) {
 	id := uuid.New().String()
-	_, err := c.db.Exec("INSERT INTO categories (id, name, description) VALUES ($1, $2, $3)", id, name, description)
+	_, err := c.db.Exec("INSERT INTO categories (id, name, description) VALUES ($1, $2, $3)",
+		id, name, description)
 	if err != nil {
 		return Category{}, err
 	}
@@ -32,24 +33,33 @@ func (c *Category) FindAll() ([]Category, error) {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var categories []Category
+	categories := []Category{}
 	for rows.Next() {
-		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.Description); err != nil {
+		var id, name, description string
+		if err := rows.Scan(&id, &name, &description); err != nil {
 			return nil, err
 		}
-		categories = append(categories, category)
+		categories = append(categories, Category{ID: id, Name: name, Description: description})
 	}
 	return categories, nil
 }
 
-func (c *Category) FindByID(categoryID string) (Category, error) {
-	var category Category
-	err := c.db.QueryRow("SELECT id, name, description FROM categories WHERE id = $1",
-		categoryID).Scan(&categoryID, &category.Name, &category.Description)
+func (c *Category) FindByCourseID(courseID string) (Category, error) {
+	var id, name, description string
+	err := c.db.QueryRow("SELECT c.id, c.name, c.description FROM categories c JOIN courses co ON c.id = co.category_id WHERE co.id = $1", courseID).
+		Scan(&id, &name, &description)
 	if err != nil {
 		return Category{}, err
 	}
-	return category, nil
+	return Category{ID: id, Name: name, Description: description}, nil
+}
+
+func (c *Category) Find(id string) (Category, error) {
+	var name, description string
+	err := c.db.QueryRow("SELECT name, description FROM categories WHERE id = $1", id).
+		Scan(&name, &description)
+	if err != nil {
+		return Category{}, err
+	}
+	return Category{ID: id, Name: name, Description: description}, nil
 }

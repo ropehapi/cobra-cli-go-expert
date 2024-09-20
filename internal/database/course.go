@@ -18,14 +18,19 @@ func NewCourse(db *sql.DB) *Course {
 	return &Course{db: db}
 }
 
-func (c *Course) Create(name, description, categoryID string) (Course, error) {
+func (c *Course) Create(name, description, categoryID string) (*Course, error) {
 	id := uuid.New().String()
 	_, err := c.db.Exec("INSERT INTO courses (id, name, description, category_id) VALUES ($1, $2, $3, $4)",
 		id, name, description, categoryID)
 	if err != nil {
-		return Course{}, err
+		return nil, err
 	}
-	return Course{ID: id, Name: name, Description: description, CategoryID: categoryID}, nil
+	return &Course{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		CategoryID:  categoryID,
+	}, nil
 }
 
 func (c *Course) FindAll() ([]Course, error) {
@@ -34,14 +39,13 @@ func (c *Course) FindAll() ([]Course, error) {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var courses []Course
+	courses := []Course{}
 	for rows.Next() {
-		var course Course
-		if err := rows.Scan(&course.ID, &course.Name, &course.Description, &course.CategoryID); err != nil {
+		var id, name, description, categoryID string
+		if err := rows.Scan(&id, &name, &description, &categoryID); err != nil {
 			return nil, err
 		}
-		courses = append(courses, course)
+		courses = append(courses, Course{ID: id, Name: name, Description: description, CategoryID: categoryID})
 	}
 	return courses, nil
 }
@@ -52,14 +56,23 @@ func (c *Course) FindByCategoryID(categoryID string) ([]Course, error) {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var courses []Course
+	courses := []Course{}
 	for rows.Next() {
-		var course Course
-		if err := rows.Scan(&course.ID, &course.Name, &course.Description, &course.CategoryID); err != nil {
+		var id, name, description, categoryID string
+		if err := rows.Scan(&id, &name, &description, &categoryID); err != nil {
 			return nil, err
 		}
-		courses = append(courses, course)
+		courses = append(courses, Course{ID: id, Name: name, Description: description, CategoryID: categoryID})
 	}
 	return courses, nil
+}
+
+func (c *Course) Find(id string) (Course, error) {
+	var name, description, categoryID string
+	err := c.db.QueryRow("SELECT name, description, category_id FROM courses WHERE id = $1", id).
+		Scan(&name, &description, &categoryID)
+	if err != nil {
+		return Course{}, err
+	}
+	return Course{ID: id, Name: name, Description: description, CategoryID: categoryID}, nil
 }
